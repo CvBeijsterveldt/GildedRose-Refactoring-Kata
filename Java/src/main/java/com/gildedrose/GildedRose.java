@@ -4,13 +4,13 @@ import java.util.stream.Stream;
 
 class GildedRose {
 
-    private static final int DEGRADATION_RATE = 1;
+    private static final int QUALITY_CHANGE_RATE = 1;
     private static final int MIN_QUALITY = 0;
     private static final int MAX_QUALITY = 50;
 
     Item[] items;
 
-    public GildedRose(Item[] items) {
+    public GildedRose(final Item[] items) {
         this.items = items;
     }
 
@@ -41,12 +41,12 @@ class GildedRose {
      * It will, however, never go above or below certain constant bounds.
      */
     private static Item updateNormalItem(final Item current) {
-        return new Item(current.name, current.sellIn - 1, calculateQualityLinearly(current, DEGRADATION_RATE));
+        return new Item(current.name, current.sellIn - 1, calculateQualityLinearly(current, -QUALITY_CHANGE_RATE));
     }
 
     /**
      * A legendary item does not have to be sold and does not degrade in quality.
-     * It is also allowed to have a quality rating outside the normal ranges.
+     * It is also allowed to have a quality rating outside the normal range.
      */
     private static Item updateLegendaryItem(final Item current) {
         return new Item(current.name, current.sellIn, current.quality);
@@ -57,7 +57,7 @@ class GildedRose {
      * It will, however, never go above or below certain constant bounds.
      */
     private static Item updateAgingItem(final Item current) {
-        return new Item(current.name, current.sellIn - 1, calculateQualityLinearly(current, -DEGRADATION_RATE));
+        return new Item(current.name, current.sellIn - 1, calculateQualityLinearly(current, QUALITY_CHANGE_RATE));
     }
 
     /**
@@ -78,21 +78,42 @@ class GildedRose {
      * A conjured item works similar to a normal item, but degrades twice as fast.
      */
     private static Item updateConjuredItem(final Item current) {
-        return new Item(current.name, current.sellIn - 1, calculateQualityLinearly(current, DEGRADATION_RATE * 2));
+        return new Item(current.name, current.sellIn - 1, calculateQualityLinearly(current, -QUALITY_CHANGE_RATE * 2));
     }
 
-    private static int calculateQualityLinearly(final Item item, final int degradation) {
-        return roundQualityWithinLimits(item.quality - (item.sellIn <= 0 ? 2 : 1) * degradation);
+    private static int calculateQualityLinearly(final Item item, final int qualityRate) {
+        return roundQualityWithinLimits(item.quality + (qualityChangeFactor(item) * qualityRate));
+    }
+
+    /**
+     * Items passed their sell-in date degrade or improve twice as fast.
+     */
+    private static int qualityChangeFactor(final Item item) {
+        return item.sellIn <= 0 ? 2 : 1;
     }
 
     private static int calculateQualityForBackstagePasses(final Item item) {
-        final int improvement = item.sellIn <= 0 ? -item.quality :
-            item.sellIn <= 5 ? 3 :
-                item.sellIn <= 10 ? 2 : 1;
-        return roundQualityWithinLimits(item.quality + improvement);
+        if (item.sellIn <= 0) {
+            return 0;
+        } else {
+            return roundQualityWithinLimits(item.quality + qualityImprovementForBackstagePass(item));
+        }
     }
 
-    private static int roundQualityWithinLimits(final int x) {
-        return x < MIN_QUALITY ? MIN_QUALITY : Math.min(x, MAX_QUALITY);
+    private static int qualityImprovementForBackstagePass(final Item item) {
+        if (item.sellIn <= 5) {
+            return 3;
+        } else if (item.sellIn <= 10) {
+            return 2;
+        } else {
+            return 1;
+        }
+    }
+
+    /**
+     * Returns the given quality rating, rounded to its lower or upper limit if necessary.
+     */
+    private static int roundQualityWithinLimits(final int quality) {
+        return quality < MIN_QUALITY ? MIN_QUALITY : Math.min(quality, MAX_QUALITY);
     }
 }
