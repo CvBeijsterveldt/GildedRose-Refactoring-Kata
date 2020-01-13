@@ -1,6 +1,5 @@
 package com.gildedrose;
 
-import java.util.function.Function;
 import java.util.stream.Stream;
 
 class GildedRose {
@@ -17,20 +16,22 @@ class GildedRose {
 
     public void updateQuality() {
         this.items = Stream.of(items)
-            .map(item -> getCorrectFunction(item).apply(item))
+            .map(GildedRose::updateItem)
             .toArray(Item[]::new);
     }
 
-    private Function<Item, Item> getCorrectFunction(final Item item) {
+    private static Item updateItem(final Item item) {
         switch (item.name) {
             case "Aged Brie":
-                return updateAgingItem();
+                return updateAgingItem(item);
             case "Sulfuras, Hand of Ragnaros":
-                return updateLegendaryItem();
+                return updateLegendaryItem(item);
             case "Backstage passes to a TAFKAL80ETC concert":
-                return updateBackstagePass();
+                return updateBackstagePass(item);
             default:
-                return item.name.startsWith("Conjured") ? updateConjuredItem() : updateNormalItem();
+                return item.name.startsWith("Conjured") ?
+                    updateConjuredItem(item) :
+                    updateNormalItem(item);
         }
     }
 
@@ -39,24 +40,24 @@ class GildedRose {
      * After said date, it degrades twice as fast.
      * It will, however, never go above or below certain constant bounds.
      */
-    private Function<Item, Item> updateNormalItem() {
-        return current -> new Item(current.name, current.sellIn - 1, calculateQualityLinearly(current, DEGRADATION_RATE));
+    private static Item updateNormalItem(final Item current) {
+        return new Item(current.name, current.sellIn - 1, calculateQualityLinearly(current, DEGRADATION_RATE));
     }
 
     /**
      * A legendary item does not have to be sold and does not degrade in quality.
      * It is also allowed to have a quality rating outside the normal ranges.
      */
-    private Function<Item, Item> updateLegendaryItem() {
-        return current -> current;
+    private static Item updateLegendaryItem(final Item current) {
+        return new Item(current.name, current.sellIn, current.quality);
     }
 
     /**
      * An aging item increases in quality the older it gets.
      * It will, however, never go above or below certain constant bounds.
      */
-    private Function<Item, Item> updateAgingItem() {
-        return current -> new Item(current.name, current.sellIn - 1, calculateQualityLinearly(current, -DEGRADATION_RATE));
+    private static Item updateAgingItem(final Item current) {
+        return new Item(current.name, current.sellIn - 1, calculateQualityLinearly(current, -DEGRADATION_RATE));
     }
 
     /**
@@ -69,29 +70,29 @@ class GildedRose {
      * - Quality increases by 3 when there are 5 days or less until the concert
      * - Quality becomes 0 after the concert
      */
-    private Function<Item, Item> updateBackstagePass() {
-        return current -> new Item(current.name, current.sellIn - 1, calculateQualityForBackstagePasses(current));
+    private static Item updateBackstagePass(final Item current) {
+        return new Item(current.name, current.sellIn - 1, calculateQualityForBackstagePasses(current));
     }
 
     /**
      * A conjured item works similar to a normal item, but degrades twice as fast.
      */
-    private Function<Item, Item> updateConjuredItem() {
-        return current -> new Item(current.name, current.sellIn - 1, calculateQualityLinearly(current, DEGRADATION_RATE * 2));
+    private static Item updateConjuredItem(final Item current) {
+        return new Item(current.name, current.sellIn - 1, calculateQualityLinearly(current, DEGRADATION_RATE * 2));
     }
 
-    private int calculateQualityLinearly(final Item item, final int degradation) {
+    private static int calculateQualityLinearly(final Item item, final int degradation) {
         return roundQualityWithinLimits(item.quality - (item.sellIn <= 0 ? 2 : 1) * degradation);
     }
 
-    private int calculateQualityForBackstagePasses(final Item item) {
+    private static int calculateQualityForBackstagePasses(final Item item) {
         final int improvement = item.sellIn <= 0 ? -item.quality :
             item.sellIn <= 5 ? 3 :
                 item.sellIn <= 10 ? 2 : 1;
         return roundQualityWithinLimits(item.quality + improvement);
     }
 
-    private int roundQualityWithinLimits(final int x) {
+    private static int roundQualityWithinLimits(final int x) {
         return x < MIN_QUALITY ? MIN_QUALITY : Math.min(x, MAX_QUALITY);
     }
 }
